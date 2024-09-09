@@ -6,6 +6,9 @@ import { type Strategy } from '../types'
 export class VapStrategy implements Strategy {
   name = 'VAP'
   address: string
+  orderSize = 0.5
+  targetPNL = 0.3
+  slippage = 50
 
   constructor(address: string) {
     this.address = address
@@ -19,6 +22,7 @@ export class VapStrategy implements Strategy {
       )} OPEN: ${open} HIGH: ${high} LOW: ${low} CLOSE: ${close} VOLUME: ${volume}`
     )
     logger.info(`[${this.name}] [${symbol}] Latest Price: ${close}`)
+
     const isEntry = close > open
     return isEntry
   }
@@ -32,7 +36,7 @@ export class VapStrategy implements Strategy {
     )
     logger.info(`[${this.name}] [${symbol}] Latest Price: ${close}`)
 
-    const isExit = close < open
+    const isExit = close / position.entryPrice - 1 > this.targetPNL
     return isExit
   }
 }

@@ -4,6 +4,7 @@ import { type Strategy } from '@/config/strategies/types'
 import { client, walletClient } from '@/rpc'
 import { Position, TokenInfo } from '@/types'
 import { logger } from '@/utils'
+import { Address } from 'viem'
 
 export class StrategyManager {
   static strategies: Strategy[] = strategies
@@ -33,11 +34,41 @@ export class StrategyManager {
           const isEntry = await strategy.isEntry(ohlcv, tokenInfo)
           if (isEntry) {
             logger.info(`[${strategy.name}] [${tokenInfo.symbol}] Entry`)
+            // const { hash, result } = await uniswapClient.swapExactETHForTokens(
+            //   tokenInfo.address as Address,
+            //   tokenInfo.decimals,
+            //   strategy.orderSize,
+            //   strategy.slippage
+            // )
+            // logger.info(
+            //   `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}`
+            // )
+            // logger.info(
+            //   `[${strategy.name}] [${tokenInfo.symbol}] Swap Result: ${result}`
+            // )
+            // positionMap.set(tokenInfoKey, {
+            //   entryTime: ohlcv[0][0],
+            //   entryPrice: ohlcv[0][4],
+            //   entryVolume: Number(result[1]),
+            // })
           }
         } else {
           const isExit = await strategy.isExit(ohlcv, tokenInfo, position)
           if (isExit) {
             logger.info(`[${strategy.name}] [${tokenInfo.symbol}] Exit`)
+            // const { hash, result } = await uniswapClient.swapExactTokensForETH(
+            //   tokenInfo.address as Address,
+            //   tokenInfo.decimals,
+            //   position.entryVolume,
+            //   strategy.slippage
+            // )
+            // logger.info(
+            //   `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}`
+            // )
+            // logger.info(
+            //   `[${strategy.name}] [${tokenInfo.symbol}] Swap Result: ${result}`
+            // )
+            // positionMap.set(tokenInfoKey, null)
           }
         }
       }
