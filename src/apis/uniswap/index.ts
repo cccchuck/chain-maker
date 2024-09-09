@@ -107,7 +107,7 @@ export class UniswapClient {
   public async getSwapExactTokensForETHParams(
     tokenAddress: Address,
     tokenDecimals: number,
-    amountOfTokens: number,
+    amountOfTokens: string,
     slippage: number
   ) {
     const token = new Token(1, tokenAddress, tokenDecimals)
@@ -119,7 +119,7 @@ export class UniswapClient {
       route,
       CurrencyAmount.fromRawAmount(
         token,
-        parseUnits(amountOfTokens.toString(), tokenDecimals).toString()
+        parseUnits(amountOfTokens, tokenDecimals).toString()
       ),
       TradeType.EXACT_INPUT
     )
@@ -199,7 +199,7 @@ export class UniswapClient {
   public async swapExactTokensForETH(
     tokenAddress: Address,
     tokenDecimals: number,
-    amountOfTokens: number,
+    amountOfTokens: string,
     slippage: number
   ) {
     const params = await this.getSwapExactTokensForETHParams(
@@ -218,7 +218,7 @@ export class UniswapClient {
       ]),
       functionName: 'swapExactTokensForETH',
       args: [
-        parseUnits(amountOfTokens.toString(), tokenDecimals),
+        parseUnits(amountOfTokens, tokenDecimals),
         params.amountOutMin,
         params.path as Address[],
         params.to,
