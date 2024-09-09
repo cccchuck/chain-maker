@@ -130,7 +130,7 @@ export class UniswapClient {
       slippage
     )
 
-    const { request } = await this.client.simulateContract({
+    const { request, result } = await this.client.simulateContract({
       chain: this.client.chain!,
       account: this.walletClient.account!,
       address: SWAP_ROUTER_2_ADDRESS,
@@ -147,9 +147,16 @@ export class UniswapClient {
       value: parseEther(amountOfETH.toString()),
     })
 
-    const tx = await this.walletClient.writeContract(request)
+    const hash = await this.walletClient.writeContract(request)
 
-    return tx
+    await this.client.waitForTransactionReceipt({
+      hash,
+    })
+
+    return {
+      hash,
+      result,
+    }
   }
 
   public async swapExactTokensForETH(
@@ -165,7 +172,7 @@ export class UniswapClient {
       slippage
     )
 
-    const { request } = await this.client.simulateContract({
+    const { request, result } = await this.client.simulateContract({
       chain: this.client.chain!,
       account: this.walletClient.account!,
       address: SWAP_ROUTER_2_ADDRESS,
@@ -182,8 +189,11 @@ export class UniswapClient {
       ],
     })
 
-    const tx = await this.walletClient.writeContract(request)
+    const hash = await this.walletClient.writeContract(request)
 
-    return tx
+    return {
+      hash,
+      result,
+    }
   }
 }
