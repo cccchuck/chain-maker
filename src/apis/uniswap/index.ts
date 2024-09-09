@@ -15,7 +15,6 @@ import {
   WalletClient,
 } from 'viem'
 import { SWAP_ROUTER_2_ADDRESS } from '@/const'
-import { logger } from '@/utils'
 
 export class UniswapClient {
   public client: PublicClient
@@ -26,6 +25,12 @@ export class UniswapClient {
     this.walletClient = walletClient
   }
 
+  /**
+   * @description Create a pair of tokens
+   * @param token0 Token0
+   * @param token1 Token1
+   * @returns Pair
+   */
   public async createPair(token0: Token, token1: Token) {
     const pairAddress = Pair.getAddress(token0, token1)
 
@@ -50,6 +55,14 @@ export class UniswapClient {
     return pair
   }
 
+  /**
+   * @description Get swap exact ETH for tokens params
+   * @param tokenAddress Token address
+   * @param tokenDecimals Token decimals
+   * @param amountOfETH Amount of ETH
+   * @param slippage Slippage(100 = 1%)
+   * @returns Swap exact ETH for tokens params
+   */
   public async getSwapExactETHForTokensParams(
     tokenAddress: Address,
     tokenDecimals: number,
@@ -83,6 +96,14 @@ export class UniswapClient {
     }
   }
 
+  /**
+   * @description Get swap exact tokens for ETH params
+   * @param tokenAddress Token address
+   * @param tokenDecimals Token decimals
+   * @param amountOfTokens Amount of tokens
+   * @param slippage Slippage(100 = 1%)
+   * @returns Swap exact tokens for ETH params
+   */
   public async getSwapExactTokensForETHParams(
     tokenAddress: Address,
     tokenDecimals: number,
@@ -117,6 +138,14 @@ export class UniswapClient {
     }
   }
 
+  /**
+   * @description Swap exact ETH for tokens
+   * @param tokenAddress Token address
+   * @param tokenDecimals Token decimals
+   * @param amountOfETH Amount of ETH
+   * @param slippage Slippage(100 = 1%)
+   * @returns Swap exact ETH for tokens result and hash
+   */
   public async swapExactETHForTokens(
     tokenAddress: Address,
     tokenDecimals: number,
@@ -159,6 +188,14 @@ export class UniswapClient {
     }
   }
 
+  /**
+   * @description Swap exact tokens for ETH
+   * @param tokenAddress Token address
+   * @param tokenDecimals Token decimals
+   * @param amountOfTokens Amount of tokens
+   * @param slippage Slippage(100 = 1%)
+   * @returns Swap exact tokens for ETH result and hash
+   */
   public async swapExactTokensForETH(
     tokenAddress: Address,
     tokenDecimals: number,
