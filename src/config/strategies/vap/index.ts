@@ -15,6 +15,8 @@ export class VapStrategy implements Strategy {
   }
 
   async isEntry(ohlcv: OHLCV[], { symbol }: TokenInfo) {
+    if (ohlcv.length === 0) return false
+
     const [ts, open, high, low, close, volume] = ohlcv[0]
     logger.info(
       `[${this.name}] [${symbol}] Time: ${dayjs(ts).format(
@@ -28,6 +30,8 @@ export class VapStrategy implements Strategy {
   }
 
   async isExit(ohlcv: OHLCV[], { symbol }: TokenInfo, position: Position) {
+    if (ohlcv.length === 0) return false
+
     const [ts, open, high, low, close, volume] = ohlcv[0]
     logger.info(
       `[${this.name}] [${symbol}] Time: ${dayjs(ts).format(
