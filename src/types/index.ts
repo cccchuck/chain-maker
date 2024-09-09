@@ -13,7 +13,7 @@ export type TokenInfo = {
 export type Position = {
   entryTime: number
   entryPrice: number
-  entryVolume: number
+  entryVolume: string
 }
 
 export type DexToolsResponse<T> = {
