@@ -1,2 +1,2 @@
 export * from './uniswap'
-export * from './dextools'
+export * as dextools from './dextools'
