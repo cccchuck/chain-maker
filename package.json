@@ -1,0 +1,34 @@
+{
+  "name": "chain-maker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start:dev": "dotenv -e .env.development tsx src/index.ts",
+    "start:prod": "dotenv -e .env.production node dist/index.js",
+    "build": "rollup -c"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/node": "^22.5.4",
+    "dotenv-cli": "^7.4.2",
+    "rollup": "^4.21.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@uniswap/router-sdk": "^1.11.1",
+    "@uniswap/sdk-core": "^5.3.1",
+    "@uniswap/universal-router-sdk": "^3.0.1",
+    "@uniswap/v2-sdk": "^4.4.1",
+    "axios": "^1.7.7",
+    "cycletls": "^1.0.26",
+    "dayjs": "^1.11.13",
+    "viem": "^2.21.3",
+    "winston": "^3.14.2"
+  }
+}
