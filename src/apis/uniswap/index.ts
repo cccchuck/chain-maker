@@ -15,6 +15,7 @@ import {
   WalletClient,
 } from 'viem'
 import { SWAP_ROUTER_2_ADDRESS } from '@/const'
+import { logger } from '@/utils'
 
 export class UniswapClient {
   public client: PublicClient
@@ -176,15 +177,18 @@ export class UniswapClient {
       value: parseEther(amountOfETH.toString()),
     })
 
-    const hash = await this.walletClient.writeContract(request)
-
-    await this.client.waitForTransactionReceipt({
-      hash,
-    })
-
-    return {
-      hash,
-      result,
+    try {
+      const hash = await this.walletClient.writeContract(request)
+      await this.client.waitForTransactionReceipt({
+        hash,
+      })
+      return {
+        hash,
+        result,
+      }
+    } catch (error) {
+      logger.error(`Swap Error: ${(error as Error).message}`)
+      return null
     }
   }
 
@@ -226,15 +230,19 @@ export class UniswapClient {
       ],
     })
 
-    const hash = await this.walletClient.writeContract(request)
+    try {
+      const hash = await this.walletClient.writeContract(request)
+      await this.client.waitForTransactionReceipt({
+        hash,
+      })
 
-    await this.client.waitForTransactionReceipt({
-      hash,
-    })
-
-    return {
-      hash,
-      result,
+      return {
+        hash,
+        result,
+      }
+    } catch (error) {
+      logger.error(`Swap Error: ${(error as Error).message}`)
+      return null
     }
   }
 }
