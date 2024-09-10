@@ -25,8 +25,30 @@ export class VapStrategy implements Strategy {
     )
     logger.info(`[${this.name}] [${symbol}] Latest Price: ${close}`)
 
-    const isEntry = close > open
-    return isEntry
+    const volumeTrend = ohlcv[0][5] > ohlcv[1][5] && ohlcv[1][5] > ohlcv[2][5]
+    const priceTrend =
+      ohlcv[0][1] - ohlcv[0][4] > ohlcv[1][1] - ohlcv[1][4] &&
+      ohlcv[1][1] - ohlcv[1][4] > ohlcv[2][1] - ohlcv[2][4] &&
+      ohlcv[0][1] - ohlcv[0][4] < 0 &&
+      ohlcv[1][1] - ohlcv[1][4] < 0 &&
+      ohlcv[2][1] - ohlcv[2][4] < 0
+
+    if (volumeTrend && priceTrend) {
+      return true
+    }
+
+    const volumeMean =
+      ohlcv.reduce((acc, item) => acc + Number(item[5]), 0) / ohlcv.length
+    if (
+      ohlcv[0][5] > volumeMean * 2 &&
+      ohlcv[0][1] - ohlcv[0][4] < ohlcv[0][4] - ohlcv[0][3] &&
+      ohlcv[0][1] - ohlcv[0][4] > 0 &&
+      ohlcv[0][4] - ohlcv[0][3] > 0
+    ) {
+      return true
+    }
+
+    return false
   }
 
   async isExit(ohlcv: OHLCV[], { symbol }: TokenInfo, position: Position) {
@@ -40,7 +62,7 @@ export class VapStrategy implements Strategy {
     )
     logger.info(`[${this.name}] [${symbol}] Latest Price: ${close}`)
 
-    const isExit = close / position.entryPrice - 1 > this.targetPNL
+    const isExit = close / position.entryPrice - 1 >= this.targetPNL
     return isExit
   }
 }
