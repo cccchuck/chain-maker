@@ -228,6 +228,10 @@ export class UniswapClient {
 
     const hash = await this.walletClient.writeContract(request)
 
+    await this.client.waitForTransactionReceipt({
+      hash,
+    })
+
     return {
       hash,
       result,
