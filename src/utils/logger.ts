@@ -7,7 +7,7 @@ export const logger = createLogger({
   level: isProd ? 'info' : 'debug',
   format: combine(
     timestamp({
-      format: 'YYYY-MM-DD HH:mm:ss:SSS',
+      format: 'YYYY-MM-DD HH:mm:ss.SSS',
     }),
     format((info) =>
       Object.assign(info, {
