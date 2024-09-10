@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "start:redis": "tsx src/redis.ts",
     "start:dev": "dotenv -e .env.development tsx src/index.ts",
     "start:prod": "dotenv -e .env.production node dist/index.js",
     "build": "rollup -c"
@@ -28,6 +29,7 @@
     "axios": "^1.7.7",
     "cycletls": "^1.0.26",
     "dayjs": "^1.11.13",
+    "redis": "^4.7.0",
     "viem": "^2.21.3",
     "winston": "^3.14.2"
   }
