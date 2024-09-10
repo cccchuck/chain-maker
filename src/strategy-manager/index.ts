@@ -5,7 +5,7 @@ import { SWAP_ROUTER_2_ADDRESS } from '@/const'
 import { client, walletClient } from '@/rpc'
 import { Position, TokenInfo } from '@/types'
 import { logger } from '@/utils'
-import { Address } from 'viem'
+import { Address, formatUnits } from 'viem'
 
 const MAX_ALLOWANCE = 2n ** 256n - 1n
 
@@ -18,7 +18,7 @@ export class StrategyManager {
     // Key = strategy.name + token address
     const tokenInfoMap = new Map<string, TokenInfo>()
     // Key = strategy.name + token address
-    const positionMap = new Map<string, Position | null>()
+    const positionMap = new Map<string, Position>()
 
     const runInterval = async (strategies: Strategy[]) => {
       for (const strategy of strategies) {
@@ -40,19 +40,19 @@ export class StrategyManager {
             `[${strategy.name}] [${tokenInfo.symbol}] Allowance: ${allowance}`
           )
 
-          // if (allowance < (MAX_ALLOWANCE * 2n) / 10n) {
-          //   logger.info(
-          //     `[${strategy.name}] [${tokenInfo.symbol}] Set Allowance`
-          //   )
-          //   await erc20.approve(
-          //     tokenInfo.address as Address,
-          //     SWAP_ROUTER_2_ADDRESS as Address,
-          //     MAX_ALLOWANCE
-          //   )
-          //   logger.info(
-          //     `[${strategy.name}] [${tokenInfo.symbol}] Set Allowance Success`
-          //   )
-          // }
+          if (allowance < (MAX_ALLOWANCE * 2n) / 10n) {
+            logger.info(
+              `[${strategy.name}] [${tokenInfo.symbol}] Set Allowance`
+            )
+            await erc20.approve(
+              tokenInfo.address as Address,
+              SWAP_ROUTER_2_ADDRESS as Address,
+              MAX_ALLOWANCE
+            )
+            logger.info(
+              `[${strategy.name}] [${tokenInfo.symbol}] Set Allowance Success`
+            )
+          }
         }
 
         const ohlcv = await dextools.fetchOHLCV(tokenInfo.pair)
@@ -61,46 +61,46 @@ export class StrategyManager {
           const isEntry = await strategy.isEntry(ohlcv, tokenInfo)
           if (isEntry) {
             logger.info(`[${strategy.name}] [${tokenInfo.symbol}] Entry`)
+            const { hash } = await uniswapClient.swapExactETHForTokens(
+              tokenInfo.address as Address,
+              tokenInfo.decimals,
+              strategy.orderSize,
+              strategy.slippage
+            )
+            const entryVolume = formatUnits(
+              await erc20.getBalance(
+                tokenInfo.address as Address,
+                walletClient.account.address as Address
+              ),
+              tokenInfo.decimals
+            )
             positionMap.set(tokenInfoKey, {
               entryTime: ohlcv[0][0],
               entryPrice: ohlcv[0][4],
-              entryVolume: '50000000',
+              entryVolume: entryVolume,
             })
-            // const { hash } = await uniswapClient.swapExactETHForTokens(
-            //   tokenInfo.address as Address,
-            //   tokenInfo.decimals,
-            //   strategy.orderSize,
-            //   strategy.slippage
-            // )
-            // logger.info(
-            //   `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}`
-            // )
-            // positionMap.set(tokenInfoKey, {
-            //   entryTime: ohlcv[0][0],
-            //   entryPrice: ohlcv[0][4],
-            //   entryVolume: (
-            //     await erc20.getBalance(
-            //       tokenInfo.address as Address,
-            //       walletClient.account.address as Address
-            //     )
-            //   ).toString(),
-            // })
+            logger.info(
+              `[${strategy.name}] [${tokenInfo.symbol}] Entry Success`
+            )
+            logger.info(
+              `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
+            )
           }
         } else {
           const isExit = await strategy.isExit(ohlcv, tokenInfo, position)
           if (isExit) {
             logger.info(`[${strategy.name}] [${tokenInfo.symbol}] Exit`)
-            positionMap.set(tokenInfoKey, null)
-            // const { hash } = await uniswapClient.swapExactTokensForETH(
-            //   tokenInfo.address as Address,
-            //   tokenInfo.decimals,
-            //   position.entryVolume,
-            //   strategy.slippage
-            // )
-            // logger.info(
-            //   `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}`
-            // )
-            // positionMap.set(tokenInfoKey, null)
+            const { hash } = await uniswapClient.swapExactTokensForETH(
+              tokenInfo.address as Address,
+              tokenInfo.decimals,
+              position.entryVolume,
+              strategy.slippage
+            )
+            positionMap.delete(tokenInfoKey)
+            logger.info(`[${strategy.name}] [${tokenInfo.symbol}] Exit Success`)
+            logger.info(
+              `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
+            )
           }
         }
       }
