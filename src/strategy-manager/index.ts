@@ -1,10 +1,13 @@
-import { UniswapClient, dextools } from '@/apis'
+import { UniswapClient, dextools, erc20 } from '@/apis'
 import { strategies } from '@/config/strategies'
 import { type Strategy } from '@/config/strategies/types'
+import { SWAP_ROUTER_2_ADDRESS } from '@/const'
 import { client, walletClient } from '@/rpc'
 import { Position, TokenInfo } from '@/types'
 import { logger } from '@/utils'
 import { Address } from 'viem'
+
+const MAX_ALLOWANCE = 2n ** 256n - 1n
 
 export class StrategyManager {
   static strategies: Strategy[] = strategies
@@ -26,6 +29,30 @@ export class StrategyManager {
           logger.info(`[${strategy.name}] Get Token: ${strategy.address} Info`)
           tokenInfo = await dextools.fetchTokenInfo(strategy.address)
           tokenInfoMap.set(tokenInfoKey, tokenInfo)
+
+          logger.info(`[${strategy.name}] [${tokenInfo.symbol}] Get Allowance`)
+          const allowance = await erc20.getAllowance(
+            tokenInfo.address as Address,
+            walletClient.account.address as Address,
+            SWAP_ROUTER_2_ADDRESS as Address
+          )
+          logger.info(
+            `[${strategy.name}] [${tokenInfo.symbol}] Allowance: ${allowance}`
+          )
+
+          // if (allowance < (MAX_ALLOWANCE * 2n) / 10n) {
+          //   logger.info(
+          //     `[${strategy.name}] [${tokenInfo.symbol}] Set Allowance`
+          //   )
+          //   await erc20.approve(
+          //     tokenInfo.address as Address,
+          //     SWAP_ROUTER_2_ADDRESS as Address,
+          //     MAX_ALLOWANCE
+          //   )
+          //   logger.info(
+          //     `[${strategy.name}] [${tokenInfo.symbol}] Set Allowance Success`
+          //   )
+          // }
         }
 
         const ohlcv = await dextools.fetchOHLCV(tokenInfo.pair)
@@ -34,7 +61,12 @@ export class StrategyManager {
           const isEntry = await strategy.isEntry(ohlcv, tokenInfo)
           if (isEntry) {
             logger.info(`[${strategy.name}] [${tokenInfo.symbol}] Entry`)
-            // const { hash, result } = await uniswapClient.swapExactETHForTokens(
+            positionMap.set(tokenInfoKey, {
+              entryTime: ohlcv[0][0],
+              entryPrice: ohlcv[0][4],
+              entryVolume: '50000000',
+            })
+            // const { hash } = await uniswapClient.swapExactETHForTokens(
             //   tokenInfo.address as Address,
             //   tokenInfo.decimals,
             //   strategy.orderSize,
@@ -43,20 +75,23 @@ export class StrategyManager {
             // logger.info(
             //   `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}`
             // )
-            // logger.info(
-            //   `[${strategy.name}] [${tokenInfo.symbol}] Swap Result: ${result}`
-            // )
             // positionMap.set(tokenInfoKey, {
             //   entryTime: ohlcv[0][0],
             //   entryPrice: ohlcv[0][4],
-            //   entryVolume: Number(result[1]),
+            //   entryVolume: (
+            //     await erc20.getBalance(
+            //       tokenInfo.address as Address,
+            //       walletClient.account.address as Address
+            //     )
+            //   ).toString(),
             // })
           }
         } else {
           const isExit = await strategy.isExit(ohlcv, tokenInfo, position)
           if (isExit) {
             logger.info(`[${strategy.name}] [${tokenInfo.symbol}] Exit`)
-            // const { hash, result } = await uniswapClient.swapExactTokensForETH(
+            positionMap.set(tokenInfoKey, null)
+            // const { hash } = await uniswapClient.swapExactTokensForETH(
             //   tokenInfo.address as Address,
             //   tokenInfo.decimals,
             //   position.entryVolume,
@@ -64,9 +99,6 @@ export class StrategyManager {
             // )
             // logger.info(
             //   `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}`
-            // )
-            // logger.info(
-            //   `[${strategy.name}] [${tokenInfo.symbol}] Swap Result: ${result}`
             // )
             // positionMap.set(tokenInfoKey, null)
           }
