@@ -1,4 +1,4 @@
-import { UniswapClient, dextools, erc20 } from '@/apis'
+import { UniswapClient, dextools, erc20, telegramClient } from '@/apis'
 import { strategies } from '@/config/strategies'
 import { type Strategy } from '@/config/strategies/types'
 import { SWAP_ROUTER_2_ADDRESS } from '@/const'
@@ -20,10 +20,15 @@ export class StrategyManager {
     }
     logger.info('Redis Client is ready')
 
+    let isSwapping = false
     const uniswapClient = new UniswapClient(client, walletClient)
 
     const runInterval = async (strategies: Strategy[]) => {
       for (const strategy of strategies) {
+        if (isSwapping) {
+          continue
+        }
+
         const tokenInfoKey = `tokenInfo-${strategy.name}-${strategy.address}`
         const positionKey = `position-${strategy.name}-${strategy.address}`
         let tokenInfo: TokenInfo | undefined = JSON.parse(
@@ -68,6 +73,7 @@ export class StrategyManager {
         if (!position) {
           const isEntry = await strategy.isEntry(ohlcv, tokenInfo)
           if (isEntry) {
+            isSwapping = true
             const { hash } = (await uniswapClient.swapExactETHForTokens(
               tokenInfo.address as Address,
               tokenInfo.decimals,
@@ -90,6 +96,12 @@ export class StrategyManager {
                   entryVolume: entryVolume,
                 })
               )
+              await telegramClient.sendMessage(
+                `[${strategy.name}] [${tokenInfo.symbol}] Entry Success`
+              )
+              await telegramClient.sendMessage(
+                `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
+              )
               logger.info(
                 `[${strategy.name}] [${tokenInfo.symbol}] Entry Success`
               )
@@ -97,10 +109,12 @@ export class StrategyManager {
                 `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
               )
             }
+            isSwapping = false
           }
         } else {
           const isExit = await strategy.isExit(ohlcv, tokenInfo, position)
           if (isExit) {
+            isSwapping = true
             const { hash } = (await uniswapClient.swapExactTokensForETH(
               tokenInfo.address as Address,
               tokenInfo.decimals,
@@ -109,6 +123,12 @@ export class StrategyManager {
             )) || { hash: null }
             if (hash) {
               await redisClient.del(positionKey)
+              await telegramClient.sendMessage(
+                `[${strategy.name}] [${tokenInfo.symbol}] Exit Success`
+              )
+              await telegramClient.sendMessage(
+                `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
+              )
               logger.info(
                 `[${strategy.name}] [${tokenInfo.symbol}] Exit Success`
               )
@@ -116,6 +136,7 @@ export class StrategyManager {
                 `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
               )
             }
+            isSwapping = false
           }
         }
       }
