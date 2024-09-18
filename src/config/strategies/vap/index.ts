@@ -6,7 +6,7 @@ export class VapStrategy implements Strategy {
   name = 'VAP'
   address: string
   orderSize = 0.3
-  targetPNL = 0.15
+  targetPNL = 0.1
   slippage = 50
 
   constructor(address: string) {
