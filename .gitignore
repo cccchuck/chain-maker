@@ -2,6 +2,8 @@ node_modules
 dist
 logs
 
+src/utils/swap.ts
+
 .env.development
 .env.production
 

@@ -8,6 +8,8 @@
     "start:redis": "tsx src/redis.ts",
     "start:dev": "dotenv -e .env.development tsx src/index.ts",
     "start:prod": "dotenv -e .env.production node dist/index.js",
+    "quick-swap:buy": "dotenv -e .env.development tsx src/utils/swap.ts buy",
+    "quick-swap:sell": "dotenv -e .env.development tsx src/utils/swap.ts sell",
     "build": "rollup -c"
   },
   "keywords": [],
