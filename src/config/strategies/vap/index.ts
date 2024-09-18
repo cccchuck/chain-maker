@@ -1,4 +1,3 @@
-import dayjs from 'dayjs'
 import { Position, TokenInfo, type OHLCV } from '@/types'
 import { logger } from '@/utils'
 import { type Strategy } from '../types'
@@ -17,35 +16,34 @@ export class VapStrategy implements Strategy {
   async isEntry(ohlcv: OHLCV[], { symbol }: TokenInfo) {
     if (ohlcv.length === 0) return false
 
-    const close = ohlcv[0][4]
-    logger.info(`[${this.name}] [${symbol}] Latest Price: ${close}; Wait Entry`)
+    const currentClose = ohlcv[0][4]
+    const [, open, , low, close, volume] = ohlcv[1]
+    logger.info(`[${this.name}] [${symbol}] Current Price: ${currentClose}`)
 
-    const volume2 = ohlcv[2][5]
-    const volume1 = ohlcv[1][5]
-    const volume0 = ohlcv[0][5]
-    const volumeTrend = volume0 > volume1 && volume1 > volume2
-    const priceDiff2 = ohlcv[2][4] - ohlcv[2][1]
-    const priceDiff1 = ohlcv[1][4] - ohlcv[1][1]
-    const priceDiff0 = ohlcv[0][4] - ohlcv[0][1]
-    const priceTrend =
-      priceDiff0 > priceDiff1 &&
-      priceDiff1 > priceDiff2 &&
-      priceDiff0 < 0 &&
-      priceDiff1 < 0 &&
-      priceDiff2 < 0
-
-    if (volumeTrend && priceTrend) {
-      return true
-    }
-
+    const realBody = close - open
+    const lowerShadow = low - close
     const volumeMean =
       ohlcv.reduce((acc, item) => acc + Number(item[5]), 0) / ohlcv.length
-    const priceDiff = ohlcv[0][4] - ohlcv[0][1]
+    const volumeStandardDeviation = Math.sqrt(
+      ohlcv.reduce(
+        (acc, item) => acc + Math.pow(Number(item[5]) - volumeMean, 2),
+        0
+      ) / ohlcv.length
+    )
+
     if (
-      priceDiff < 0 &&
-      ohlcv[0][5] > volumeMean &&
-      Math.abs(priceDiff) < Math.abs(ohlcv[0][3] - ohlcv[0][4])
+      realBody < 0 &&
+      lowerShadow < 0 &&
+      Math.abs(lowerShadow) > 2 * Math.abs(realBody) &&
+      volume >= volumeMean + volumeStandardDeviation
     ) {
+      logger.info(`[${this.name}] [${symbol}] Entry Condition Met;`)
+      logger.info(
+        `[${this.name}] [${symbol}] Open: ${open}; Low: ${low}; Close: ${close}; RealBody: ${realBody}; LowerShadow: ${lowerShadow}; Volume: ${volume}`
+      )
+      logger.info(
+        `[${this.name}] [${symbol}] Volume: ${volume}; VolumeMean: ${volumeMean}; VolumeStandardDeviation: ${volumeStandardDeviation}`
+      )
       return true
     }
 
@@ -56,9 +54,17 @@ export class VapStrategy implements Strategy {
     if (ohlcv.length === 0) return false
 
     const close = ohlcv[0][4]
-    logger.info(`[${this.name}] [${symbol}] Latest Price: ${close}; Wait Exit`)
+    logger.info(`[${this.name}] [${symbol}] Current Price: ${close};`)
 
     const isExit = close / position.entryPrice - 1 >= this.targetPNL
+    if (isExit) {
+      logger.info(`[${this.name}] [${symbol}] Exit Condition Met;`)
+      logger.info(
+        `[${this.name}] [${symbol}] Entry Price: ${
+          position.entryPrice
+        }; Current Price: ${close}; PNL: ${close / position.entryPrice - 1}`
+      )
+    }
     return isExit
   }
 }
