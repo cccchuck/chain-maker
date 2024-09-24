@@ -5,16 +5,38 @@ import { type Strategy } from '../types'
 export class VapStrategy implements Strategy {
   name = 'VAP'
   address: string
-  orderSize = 0.3
-  targetPNL = 0.1
-  slippage = 50
+  orderSize: number
+  targetPNL: number
+  slippage: number
+  maxPositions: number
+  maxLoss: number
 
-  constructor(address: string) {
+  constructor({
+    address,
+    orderSize = 0.3,
+    targetPNL = 0.1,
+    slippage = 50,
+    maxPositions = 2,
+    maxLoss = 0.5,
+  }: {
+    address: string
+    orderSize?: number
+    targetPNL?: number
+    slippage?: number
+    maxPositions?: number
+    maxLoss?: number
+  }) {
     this.address = address
+    this.orderSize = orderSize
+    this.targetPNL = targetPNL
+    this.slippage = slippage
+    this.maxPositions = maxPositions
+    this.maxLoss = maxLoss
   }
 
-  async isEntry(ohlcv: OHLCV[], { symbol }: TokenInfo) {
+  async isEntry(ohlcv: OHLCV[], { symbol }: TokenInfo, positions: Position[]) {
     if (ohlcv.length === 0) return false
+    if (positions.length >= this.maxPositions) return false
 
     const currentClose = ohlcv[0][4]
     const [, open, , low, close, volume] = ohlcv[1]
@@ -23,26 +45,21 @@ export class VapStrategy implements Strategy {
     const realBody = close - open
     const lowerShadow = low - close
     const volumeMean =
-      ohlcv.reduce((acc, item) => acc + Number(item[5]), 0) / ohlcv.length
-    const volumeStandardDeviation = Math.sqrt(
-      ohlcv.reduce(
-        (acc, item) => acc + Math.pow(Number(item[5]) - volumeMean, 2),
-        0
-      ) / ohlcv.length
-    )
+      ohlcv.slice(0, 12).reduce((acc, item) => acc + Number(item[5]), 0) /
+      ohlcv.length
 
     if (
       realBody < 0 &&
       lowerShadow < 0 &&
-      Math.abs(lowerShadow) > 2 * Math.abs(realBody) &&
-      volume >= volumeMean + volumeStandardDeviation
+      Math.abs(lowerShadow) >= 2 * Math.abs(realBody) &&
+      volume >= 2 * volumeMean
     ) {
       logger.info(`[${this.name}] [${symbol}] Entry Condition Met;`)
       logger.info(
-        `[${this.name}] [${symbol}] Open: ${open}; Low: ${low}; Close: ${close}; RealBody: ${realBody}; LowerShadow: ${lowerShadow}; Volume: ${volume}`
+        `[${this.name}] [${symbol}] Open: ${open}; Low: ${low}; Close: ${close}; RealBody: ${realBody}; LowerShadow: ${lowerShadow}`
       )
       logger.info(
-        `[${this.name}] [${symbol}] Volume: ${volume}; VolumeMean: ${volumeMean}; VolumeStandardDeviation: ${volumeStandardDeviation}`
+        `[${this.name}] [${symbol}] Volume: ${volume}; VolumeMean: ${volumeMean}`
       )
       return true
     }
@@ -50,21 +67,27 @@ export class VapStrategy implements Strategy {
     return false
   }
 
-  async isExit(ohlcv: OHLCV[], { symbol }: TokenInfo, position: Position) {
-    if (ohlcv.length === 0) return false
+  async isExit(ohlcv: OHLCV[], { symbol }: TokenInfo, positions: Position[]) {
+    if (ohlcv.length === 0) return []
 
     const close = ohlcv[0][4]
     logger.info(`[${this.name}] [${symbol}] Current Price: ${close};`)
 
-    const isExit = close / position.entryPrice - 1 >= this.targetPNL
-    if (isExit) {
-      logger.info(`[${this.name}] [${symbol}] Exit Condition Met;`)
-      logger.info(
-        `[${this.name}] [${symbol}] Entry Price: ${
-          position.entryPrice
-        }; Current Price: ${close}; PNL: ${close / position.entryPrice - 1}`
-      )
-    }
-    return isExit
+    positions.filter((position) => {
+      const isExit =
+        close / position.entryPrice - 1 >= this.targetPNL ||
+        close / position.entryPrice - 1 >= -this.maxLoss
+      if (isExit) {
+        logger.info(`[${this.name}] [${symbol}] Exit Condition Met;`)
+        logger.info(
+          `[${this.name}] [${symbol}] Entry Price: ${
+            position.entryPrice
+          }; Current Price: ${close}; PNL: ${close / position.entryPrice - 1}`
+        )
+      }
+      return isExit
+    })
+
+    return positions
   }
 }

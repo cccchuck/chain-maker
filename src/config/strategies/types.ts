@@ -12,10 +12,14 @@ export type Strategy = {
   // Slippage(100 = 1%)
   slippage: number
 
-  isEntry: (ohlcv: OHLCV[], tokenInfo: TokenInfo) => Promise<boolean>
+  isEntry: (
+    ohlcv: OHLCV[],
+    tokenInfo: TokenInfo,
+    positions: Position[]
+  ) => Promise<boolean>
   isExit: (
     ohlcv: OHLCV[],
     tokenInfo: TokenInfo,
-    position: Position
-  ) => Promise<boolean>
+    positions: Position[]
+  ) => Promise<Position[]>
 }
