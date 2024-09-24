@@ -4,7 +4,7 @@ import { type Strategy } from '@/config/strategies/types'
 import { SWAP_ROUTER_2_ADDRESS } from '@/const'
 import { redisClient } from '@/db'
 import { client, walletClient } from '@/rpc'
-import { TokenInfo } from '@/types'
+import { Position, TokenInfo } from '@/types'
 import { logger } from '@/utils'
 import { Address, formatUnits } from 'viem'
 
@@ -34,9 +34,10 @@ export class StrategyManager {
         let tokenInfo: TokenInfo | undefined = JSON.parse(
           (await redisClient.get(tokenInfoKey)) || 'null'
         )
-        const position = JSON.parse(
-          (await redisClient.get(positionKey)) || 'null'
-        )
+        const positions = JSON.parse(
+          (await redisClient.get(positionKey)) || '[]'
+        ) as Position[]
+
         if (!tokenInfo) {
           logger.info(`[${strategy.name}] Initializing Strategy`)
           logger.info(`[${strategy.name}] Get Token: ${strategy.address} Info`)
@@ -70,8 +71,8 @@ export class StrategyManager {
         }
 
         const ohlcv = await dextools.fetchOHLCV(tokenInfo.pair)
-        if (!position) {
-          const isEntry = await strategy.isEntry(ohlcv, tokenInfo)
+        if (!positions) {
+          const isEntry = await strategy.isEntry(ohlcv, tokenInfo, positions)
           if (isEntry) {
             isSwapping = true
             const { hash } = (await uniswapClient.swapExactETHForTokens(
@@ -90,11 +91,14 @@ export class StrategyManager {
               )
               await redisClient.set(
                 positionKey,
-                JSON.stringify({
-                  entryTime: ohlcv[0][0],
-                  entryPrice: ohlcv[0][4],
-                  entryVolume: entryVolume,
-                })
+                JSON.stringify([
+                  ...positions,
+                  {
+                    entryTime: ohlcv[0][0],
+                    entryPrice: ohlcv[0][4],
+                    entryVolume: entryVolume,
+                  },
+                ])
               )
               await telegramClient.sendMessage(
                 `[${strategy.name}] [${tokenInfo.symbol}] Entry Success`
@@ -112,8 +116,12 @@ export class StrategyManager {
             isSwapping = false
           }
         } else {
-          const isExit = await strategy.isExit(ohlcv, tokenInfo, position)
-          if (isExit) {
+          const exitPositions = await strategy.isExit(
+            ohlcv,
+            tokenInfo,
+            positions
+          )
+          for (const position of exitPositions) {
             isSwapping = true
             const { hash } = (await uniswapClient.swapExactTokensForETH(
               tokenInfo.address as Address,
@@ -122,7 +130,10 @@ export class StrategyManager {
               strategy.slippage
             )) || { hash: null }
             if (hash) {
-              await redisClient.del(positionKey)
+              const newPositions = positions.filter(
+                (p) => p.entryTime !== position.entryTime
+              )
+              await redisClient.set(positionKey, JSON.stringify(newPositions))
               await telegramClient.sendMessage(
                 `[${strategy.name}] [${tokenInfo.symbol}] Exit Success`
               )
