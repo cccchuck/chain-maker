@@ -58,13 +58,17 @@ export const fetchOHLCV = async (
     return []
   } else {
     const data = response.body as CandlesResponse
-    return data.data.candles.map((item: any) => [
-      item.ts,
-      item.open,
-      item.high,
-      item.low,
-      item.close,
-      item.volume,
-    ])
+    const ohlcv = data.data.candles.map(
+      (item: any, index: number, array: any[]) => [
+        item.ts,
+        index < array.length - 1 ? array[index + 1].close : item.open,
+        item.high,
+        item.low,
+        item.close,
+        item.volume,
+      ]
+    ) as OHLCV[]
+
+    return ohlcv
   }
 }
