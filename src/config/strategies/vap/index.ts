@@ -73,7 +73,7 @@ export class VapStrategy implements Strategy {
     const close = ohlcv[0][4]
     logger.info(`[${this.name}] [${symbol}] Current Price: ${close};`)
 
-    positions.filter((position) => {
+    return positions.filter((position) => {
       const isExit =
         close / position.entryPrice - 1 >= this.targetPNL ||
         close / position.entryPrice - 1 >= -this.maxLoss
@@ -87,7 +87,5 @@ export class VapStrategy implements Strategy {
       }
       return isExit
     })
-
-    return positions
   }
 }

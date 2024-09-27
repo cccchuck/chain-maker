@@ -11,6 +11,10 @@ export type Strategy = {
   targetPNL: number
   // Slippage(100 = 1%)
   slippage: number
+  // Max positions
+  maxPositions: number
+  // Max loss
+  maxLoss: number
 
   isEntry: (
     ohlcv: OHLCV[],

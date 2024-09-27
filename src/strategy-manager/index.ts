@@ -71,7 +71,7 @@ export class StrategyManager {
         }
 
         const ohlcv = await dextools.fetchOHLCV(tokenInfo.pair)
-        if (!positions) {
+        if (positions.length < strategy.maxPositions) {
           const isEntry = await strategy.isEntry(ohlcv, tokenInfo, positions)
           if (isEntry) {
             isSwapping = true
