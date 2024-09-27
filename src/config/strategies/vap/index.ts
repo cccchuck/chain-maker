@@ -76,7 +76,7 @@ export class VapStrategy implements Strategy {
     return positions.filter((position) => {
       const isExit =
         close / position.entryPrice - 1 >= this.targetPNL ||
-        close / position.entryPrice - 1 >= -this.maxLoss
+        Math.abs(close / position.entryPrice - 1) >= this.maxLoss
       if (isExit) {
         logger.info(`[${this.name}] [${symbol}] Exit Condition Met;`)
         logger.info(
