@@ -1,3 +1,5 @@
+import { Address } from 'viem'
+
 // [timestamp, open, high, low, close, volume]
 export type OHLCV = [number, number, number, number, number, number]
 
@@ -5,9 +7,8 @@ export type TokenInfo = {
   name: string
   symbol: string
   decimals: number
-  address: string
-  chainId: number
-  pair: string
+  totalSupply: string
+  address?: Address
 }
 
 export type Position = {
@@ -56,3 +57,9 @@ export type CandlesResponse = DexToolsResponse<{
     volume: number
   }>
 }>
+
+export type ServiceBaseResponse<T> = {
+  code: number
+  msg: string
+  data: T
+}

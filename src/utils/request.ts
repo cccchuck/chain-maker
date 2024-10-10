@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { logger } from './logger'
+import { ServiceBaseResponse } from '@/types'
 
 const defaultConfig: AxiosRequestConfig = {
   timeout: 1000 * 10,
@@ -24,11 +25,17 @@ export class Request {
     config?: AxiosRequestConfig
   ): Promise<[null, T] | [D, null]> {
     try {
-      const response = await this.axiosInstance.get<T>(url, config)
+      const response = await this.axiosInstance.get<ServiceBaseResponse<T>>(
+        url,
+        config
+      )
       if (response.status >= 400) {
         throw new Error(response.statusText)
       }
-      return [null, response.data]
+      if (response.data.code !== 0) {
+        throw new Error(response.data.msg)
+      }
+      return [null, response.data.data]
     } catch (error) {
       return [error as D, null]
     }
@@ -40,13 +47,25 @@ export class Request {
     config?: AxiosRequestConfig
   ): Promise<[null, T] | [D, null]> {
     try {
-      const response = await this.axiosInstance.post<T>(url, data, config)
+      const response = await this.axiosInstance.post<ServiceBaseResponse<T>>(
+        url,
+        data,
+        config
+      )
       if (response.status !== 200) {
         throw new Error(response.statusText)
       }
-      return [null, response.data]
+      if (response.data.code !== 0) {
+        throw new Error(response.data.msg)
+      }
+      return [null, response.data.data]
     } catch (error) {
       return [error as D, null]
     }
   }
 }
+
+export const serviceRequest = new Request({
+  baseURL: process.env.SERVICE_URL,
+  timeout: 5000,
+})

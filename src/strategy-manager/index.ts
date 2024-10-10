@@ -10,6 +10,8 @@ import { Address, formatUnits } from 'viem'
 
 const MAX_ALLOWANCE = 2n ** 256n - 1n
 
+import { buildTokenInfoKey, buildPositionKey, getPairAddress } from '@/utils'
+
 export class StrategyManager {
   static strategies: Strategy[] = strategies
 
@@ -29,8 +31,11 @@ export class StrategyManager {
           continue
         }
 
-        const tokenInfoKey = `tokenInfo-${strategy.name}-${strategy.address}`
-        const positionKey = `position-${strategy.name}-${strategy.address}`
+        const tokenInfoKey = buildTokenInfoKey(strategy.address as Address)
+        const positionKey = buildPositionKey(
+          strategy.address as Address,
+          strategy.name
+        )
         let tokenInfo: TokenInfo | undefined = JSON.parse(
           (await redisClient.get(tokenInfoKey)) || 'null'
         )
@@ -42,7 +47,6 @@ export class StrategyManager {
           logger.info(`[${strategy.name}] Initializing Strategy`)
           logger.info(`[${strategy.name}] Get Token: ${strategy.address} Info`)
           tokenInfo = await dextools.fetchTokenInfo(strategy.address)
-          // tokenInfoMap.set(tokenInfoKey, tokenInfo)
           await redisClient.set(tokenInfoKey, JSON.stringify(tokenInfo))
 
           logger.info(`[${strategy.name}] [${tokenInfo.symbol}] Get Allowance`)
@@ -70,23 +74,32 @@ export class StrategyManager {
           }
         }
 
-        const ohlcv = await dextools.fetchOHLCV(tokenInfo.pair)
+        const pairAddress = getPairAddress(
+          strategy.address as Address,
+          tokenInfo.decimals
+        )
+        const ohlcv = await dextools.fetchOHLCV(pairAddress)
         if (positions.length < strategy.maxPositions) {
           const isEntry = await strategy.isEntry(ohlcv, tokenInfo, positions)
           if (isEntry) {
             isSwapping = true
-            const { hash } = (await uniswapClient.swapExactETHForTokens(
+            const beforeBalance = await erc20.getBalance(
               tokenInfo.address as Address,
-              tokenInfo.decimals,
-              strategy.orderSize,
+              walletClient.account.address as Address
+            )
+            const hash = await uniswapClient.swap(
+              true,
+              strategy.address as Address,
+              strategy.orderSize.toString(),
               strategy.slippage
-            )) || { hash: null }
-            if (hash) {
+            )
+            if (hash !== null) {
+              const afterBalance = await erc20.getBalance(
+                tokenInfo.address as Address,
+                walletClient.account.address as Address
+              )
               const entryVolume = formatUnits(
-                await erc20.getBalance(
-                  tokenInfo.address as Address,
-                  walletClient.account.address as Address
-                ),
+                afterBalance - beforeBalance,
                 tokenInfo.decimals
               )
               await redisClient.set(
@@ -123,12 +136,12 @@ export class StrategyManager {
           )
           for (const position of exitPositions) {
             isSwapping = true
-            const { hash } = (await uniswapClient.swapExactTokensForETH(
-              tokenInfo.address as Address,
-              tokenInfo.decimals,
-              position.entryVolume,
+            const hash = await uniswapClient.swap(
+              true,
+              strategy.address as Address,
+              strategy.orderSize.toString(),
               strategy.slippage
-            )) || { hash: null }
+            )
             if (hash) {
               const newPositions = positions.filter(
                 (p) => p.entryTime !== position.entryTime
