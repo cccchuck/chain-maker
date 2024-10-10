@@ -4,7 +4,7 @@ import { type Strategy } from '@/config/strategies/types'
 import { SWAP_ROUTER_2_ADDRESS } from '@/const'
 import { redisClient } from '@/db'
 import { client, walletClient } from '@/rpc'
-import { Position, TokenInfo } from '@/types'
+import { Position, TokenMetadata } from '@/types'
 import { logger } from '@/utils'
 import { Address, formatUnits } from 'viem'
 
@@ -31,60 +31,70 @@ export class StrategyManager {
           continue
         }
 
-        const tokenInfoKey = buildTokenInfoKey(strategy.address as Address)
+        const tokenMetadataKey = buildTokenInfoKey(strategy.address as Address)
         const positionKey = buildPositionKey(
           strategy.address as Address,
           strategy.name
         )
-        let tokenInfo: TokenInfo | undefined = JSON.parse(
-          (await redisClient.get(tokenInfoKey)) || 'null'
+        let tokenMetadata: TokenMetadata | null = JSON.parse(
+          (await redisClient.get(tokenMetadataKey)) || 'null'
         )
         const positions = JSON.parse(
           (await redisClient.get(positionKey)) || '[]'
         ) as Position[]
 
-        if (!tokenInfo) {
+        if (!tokenMetadata) {
           logger.info(`[${strategy.name}] Initializing Strategy`)
           logger.info(`[${strategy.name}] Get Token: ${strategy.address} Info`)
-          tokenInfo = await dextools.fetchTokenInfo(strategy.address)
-          await redisClient.set(tokenInfoKey, JSON.stringify(tokenInfo))
+          tokenMetadata = await uniswapClient.getTokenMetadata(
+            strategy.address as Address
+          )
+          if (tokenMetadata === null) continue
 
-          logger.info(`[${strategy.name}] [${tokenInfo.symbol}] Get Allowance`)
+          await redisClient.set(tokenMetadataKey, JSON.stringify(tokenMetadata))
+
+          logger.info(
+            `[${strategy.name}] [${tokenMetadata.symbol}] Get Allowance`
+          )
           const allowance = await erc20.getAllowance(
-            tokenInfo.address as Address,
+            tokenMetadata.address as Address,
             walletClient.account.address as Address,
             SWAP_ROUTER_2_ADDRESS as Address
           )
           logger.info(
-            `[${strategy.name}] [${tokenInfo.symbol}] Allowance: ${allowance}`
+            `[${strategy.name}] [${tokenMetadata.symbol}] Allowance: ${allowance}`
           )
 
           if (allowance < (MAX_ALLOWANCE * 2n) / 10n) {
             logger.info(
-              `[${strategy.name}] [${tokenInfo.symbol}] Set Allowance`
+              `[${strategy.name}] [${tokenMetadata.symbol}] Set Allowance`
             )
             await erc20.approve(
-              tokenInfo.address as Address,
+              tokenMetadata.address as Address,
               SWAP_ROUTER_2_ADDRESS as Address,
               MAX_ALLOWANCE
             )
             logger.info(
-              `[${strategy.name}] [${tokenInfo.symbol}] Set Allowance Success`
+              `[${strategy.name}] [${tokenMetadata.symbol}] Set Allowance Success`
             )
           }
         }
 
         const pairAddress = getPairAddress(
           strategy.address as Address,
-          tokenInfo.decimals
+          tokenMetadata.decimals
         )
         const ohlcv = await dextools.fetchOHLCV(pairAddress)
         if (positions.length < strategy.maxPositions) {
-          const isEntry = await strategy.isEntry(ohlcv, tokenInfo, positions)
+          const isEntry = await strategy.isEntry(
+            ohlcv,
+            tokenMetadata,
+            positions
+          )
           if (isEntry) {
             isSwapping = true
             const beforeBalance = await erc20.getBalance(
-              tokenInfo.address as Address,
+              tokenMetadata.address as Address,
               walletClient.account.address as Address
             )
             const hash = await uniswapClient.swap(
@@ -95,12 +105,12 @@ export class StrategyManager {
             )
             if (hash !== null) {
               const afterBalance = await erc20.getBalance(
-                tokenInfo.address as Address,
+                tokenMetadata.address as Address,
                 walletClient.account.address as Address
               )
               const entryVolume = formatUnits(
                 afterBalance - beforeBalance,
-                tokenInfo.decimals
+                tokenMetadata.decimals
               )
               await redisClient.set(
                 positionKey,
@@ -114,16 +124,16 @@ export class StrategyManager {
                 ])
               )
               await telegramClient.sendMessage(
-                `[${strategy.name}] [${tokenInfo.symbol}] Entry Success`
+                `[${strategy.name}] [${tokenMetadata.symbol}] Entry Success`
               )
               await telegramClient.sendMessage(
-                `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
+                `[${strategy.name}] [${tokenMetadata.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
               )
               logger.info(
-                `[${strategy.name}] [${tokenInfo.symbol}] Entry Success`
+                `[${strategy.name}] [${tokenMetadata.symbol}] Entry Success`
               )
               logger.info(
-                `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
+                `[${strategy.name}] [${tokenMetadata.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
               )
             }
             isSwapping = false
@@ -131,7 +141,7 @@ export class StrategyManager {
         } else {
           const exitPositions = await strategy.isExit(
             ohlcv,
-            tokenInfo,
+            tokenMetadata,
             positions
           )
           for (const position of exitPositions) {
@@ -148,16 +158,16 @@ export class StrategyManager {
               )
               await redisClient.set(positionKey, JSON.stringify(newPositions))
               await telegramClient.sendMessage(
-                `[${strategy.name}] [${tokenInfo.symbol}] Exit Success`
+                `[${strategy.name}] [${tokenMetadata.symbol}] Exit Success`
               )
               await telegramClient.sendMessage(
-                `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
+                `[${strategy.name}] [${tokenMetadata.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
               )
               logger.info(
-                `[${strategy.name}] [${tokenInfo.symbol}] Exit Success`
+                `[${strategy.name}] [${tokenMetadata.symbol}] Exit Success`
               )
               logger.info(
-                `[${strategy.name}] [${tokenInfo.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
+                `[${strategy.name}] [${tokenMetadata.symbol}] Swap Hash: ${hash}; Swap Price: ${ohlcv[0][4]}`
               )
             }
             isSwapping = false

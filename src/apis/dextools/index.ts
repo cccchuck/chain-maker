@@ -1,12 +1,6 @@
 import initCycleTLS, { CycleTLSClient } from 'cycletls'
-import { Address } from 'viem'
-import { mainnet } from 'viem/chains'
-import { ERC20_ABI, UNISWAP_FACTORY_V2_ABI } from '@/abis'
-import { UNISWAP_V2_FACTORY_ADDRESS, WETH_ADDRESS } from '@/const'
-import { client } from '@/rpc'
 import { type CandlesResponse, type OHLCV } from '@/types'
-import { type TokenInfo } from '@/types'
-import { getTimestamp, sortTokens, timeFrames } from '@/utils'
+import { getTimestamp, timeFrames } from '@/utils'
 
 let cycleTLS: CycleTLSClient | null = null
 
@@ -17,32 +11,6 @@ const cycleTLSOptions = {
     'User-Agent':
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
   },
-}
-
-export const fetchTokenInfo = async (address: string): Promise<TokenInfo> => {
-  const [name, symbol, decimals, pair] = await Promise.all([
-    ...(['name', 'symbol', 'decimals'] as const).map((functionName) =>
-      client.readContract({
-        address: address as Address,
-        abi: ERC20_ABI,
-        functionName,
-      })
-    ),
-    client.readContract({
-      address: UNISWAP_V2_FACTORY_ADDRESS,
-      abi: UNISWAP_FACTORY_V2_ABI,
-      functionName: 'getPair',
-      args: sortTokens(address as Address, WETH_ADDRESS),
-    }),
-  ])
-  return {
-    address,
-    chainId: mainnet.id,
-    name: name as string,
-    symbol: symbol as string,
-    decimals: decimals as number,
-    pair: pair as string,
-  }
 }
 
 export const fetchOHLCV = async (

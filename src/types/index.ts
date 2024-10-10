@@ -3,7 +3,7 @@ import { Address } from 'viem'
 // [timestamp, open, high, low, close, volume]
 export type OHLCV = [number, number, number, number, number, number]
 
-export type TokenInfo = {
+export type TokenMetadata = {
   name: string
   symbol: string
   decimals: number

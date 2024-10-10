@@ -3,6 +3,7 @@ import { logger } from '@/utils'
 import { serviceRequest } from '@/utils/request'
 import { mainnet } from 'viem/chains'
 import axios from 'axios'
+import type { TokenMetadata } from '@/types'
 
 type GetPrepareSwapParams = {
   from: Address
@@ -74,6 +75,24 @@ export class UniswapClient {
   constructor(client: PublicClient, walletClient: WalletClient) {
     this.client = client
     this.walletClient = walletClient
+  }
+
+  public async getTokenMetadata(
+    tokenAddress: Address
+  ): Promise<TokenMetadata | null> {
+    const [err, tokenMetadata] = await serviceRequest.get<TokenMetadata>(
+      '/get-token-metadata',
+      {
+        params: {
+          tokenAddress,
+        },
+      }
+    )
+    if (err) {
+      logger.error(`Get Token Metadata Error: ${err.message}`)
+      return null
+    }
+    return tokenMetadata
   }
 
   public async getPrepareBuyParams(data: GetPrepareBuyParams) {
