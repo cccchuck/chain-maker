@@ -1,4 +1,4 @@
-import { OHLCV, Position, TokenInfo } from '@/types'
+import { OHLCV, Position, TokenMetadata } from '@/types'
 
 export type Strategy = {
   // Strategy name
@@ -18,12 +18,12 @@ export type Strategy = {
 
   isEntry: (
     ohlcv: OHLCV[],
-    tokenInfo: TokenInfo,
+    tokenMetadata: TokenMetadata,
     positions: Position[]
   ) => Promise<boolean>
   isExit: (
     ohlcv: OHLCV[],
-    tokenInfo: TokenInfo,
+    tokenMetadata: TokenMetadata,
     positions: Position[]
   ) => Promise<Position[]>
 }

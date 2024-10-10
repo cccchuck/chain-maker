@@ -5,12 +5,15 @@ import { SWAP_ROUTER_2_ADDRESS } from '@/const'
 import { redisClient } from '@/db'
 import { client, walletClient } from '@/rpc'
 import { Position, TokenMetadata } from '@/types'
-import { logger } from '@/utils'
+import {
+  buildTokenMetadataKey,
+  buildPositionKey,
+  getPairAddress,
+  logger,
+} from '@/utils'
 import { Address, formatUnits } from 'viem'
 
 const MAX_ALLOWANCE = 2n ** 256n - 1n
-
-import { buildTokenInfoKey, buildPositionKey, getPairAddress } from '@/utils'
 
 export class StrategyManager {
   static strategies: Strategy[] = strategies
@@ -31,7 +34,9 @@ export class StrategyManager {
           continue
         }
 
-        const tokenMetadataKey = buildTokenInfoKey(strategy.address as Address)
+        const tokenMetadataKey = buildTokenMetadataKey(
+          strategy.address as Address
+        )
         const positionKey = buildPositionKey(
           strategy.address as Address,
           strategy.name

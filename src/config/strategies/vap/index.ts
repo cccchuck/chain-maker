@@ -1,4 +1,4 @@
-import { Position, TokenInfo, type OHLCV } from '@/types'
+import { Position, TokenMetadata, type OHLCV } from '@/types'
 import { logger } from '@/utils'
 import { type Strategy } from '../types'
 
@@ -34,7 +34,11 @@ export class VapStrategy implements Strategy {
     this.maxLoss = maxLoss
   }
 
-  async isEntry(ohlcv: OHLCV[], { symbol }: TokenInfo, positions: Position[]) {
+  async isEntry(
+    ohlcv: OHLCV[],
+    { symbol }: TokenMetadata,
+    positions: Position[]
+  ) {
     if (ohlcv.length === 0) return false
     if (positions.length >= this.maxPositions) return false
 
@@ -67,7 +71,11 @@ export class VapStrategy implements Strategy {
     return false
   }
 
-  async isExit(ohlcv: OHLCV[], { symbol }: TokenInfo, positions: Position[]) {
+  async isExit(
+    ohlcv: OHLCV[],
+    { symbol }: TokenMetadata,
+    positions: Position[]
+  ) {
     if (ohlcv.length === 0) return []
 
     const close = ohlcv[0][4]

@@ -20,7 +20,7 @@ export const getTimestamp = () => {
   return Math.floor(Date.now() / 1000)
 }
 
-export const buildTokenInfoKey = (address: Address) =>
+export const buildTokenMetadataKey = (address: Address) =>
   `TOKEN_METADATA:${address.toUpperCase()}`
 
 export const buildPositionKey = (address: Address, strategyName: string) =>
